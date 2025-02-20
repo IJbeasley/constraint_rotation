@@ -1,5 +1,17 @@
+# Project or environmental files
 .Rproj.user
+.Rprofile
 .Rhistory
-.RData
 .Ruserdata
 renv/*
+
+# Data file
+data/*
+output/*
+.RData
+*.bgz
+*.csv
+*.gct
+*.gz
+*.tsv
+*.txt
