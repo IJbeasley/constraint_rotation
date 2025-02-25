@@ -315,5 +315,27 @@ gnomad_lof %>%
 # Next step to add to script:
 # Create further subcategories of differences 
 
+# 4 categories:
+# 1. p_afr > p_nfe, and p_afr and p_nfe are big
+# 2. p_afr > p_nfe, and p_afr and p_nfe are small
+
+# 3. p_afr < p_nfe, and p_afr and p_nfe are big
+# 4. p_afr < p_nfe, and p_afr and p_nfe are small
+
+# Define big threshold as median
+big = 0.001
+
+gnomad_lof  = gnomad_lof  %>% 
+                        dplyr::mutate(
+                                              unconstrained_p_afr =ifelse(p_afr >= big, 1, 0),
+                                              unconstrained_p_nfe = ifelse(p_nfe >= big, 1, 0),
+                                              
+                                              ) %>% 
+                      dplyr:: group_by(diff, unconstrained_p_afr, unconstrained_p_nfe)                        
+
+print("\n Number of genes in each category")
+gnomad_lof  %>% 
+# group_by(diff, unconstrained_p_afr, unconstrained_p_nfe) %>%
+  summarise(n = n())
 
 
