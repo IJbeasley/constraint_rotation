@@ -3,7 +3,8 @@
 # in particular, the distribution of p values for different populations
 
 ####### set up #######
-
+{
+  
 library(ggplot2)
 library(dplyr)
 
@@ -12,10 +13,11 @@ library(dplyr)
 gnomad_lof = data.table::fread("data/gnomad.v2.1.1.lof_metrics.by_gene.txt")
 
 # What columns are in the data?
-names(gnomad_lof)
+print(names(gnomad_lof))
 
 # Look at the first few rows  and columns of the data
 head(gnomad_lof[1:5, 1:5])
+}
 
 
 
@@ -30,20 +32,20 @@ head(gnomad_lof[1:5, 1:5])
 
 {
 
-print("\n All populations p distribution")
-summary(gnomad_lof$p)
+message("\n All populations p distribution")
+print(summary(gnomad_lof$p))
 
-print("\n AFR p distribution")
-summary(gnomad_lof$p_afr)
+message("\n AFR p distribution")
+print(summary(gnomad_lof$p_afr))
 
-print("\n NFE p distribution")
-summary(gnomad_lof$p_nfe)
+message("\n NFE p distribution")
+print(summary(gnomad_lof$p_nfe))
 
-print("\n FIN p distribution")
-summary(gnomad_lof$p_fin)
+message("\n FIN p distribution")
+print(summary(gnomad_lof$p_fin))
 
-print("\n AMR p distribution")
-summary(gnomad_lof$p_amr)
+message("\n AMR p distribution")
+print(summary(gnomad_lof$p_amr))
 
 }
 
@@ -92,6 +94,7 @@ gnomad_lof   %>%
 
 ####### Histograms of p, for more constrainted genes for different populations ########
 
+# filtering at the median ... 
 p_filter = 0.001
 
 gnomad_lof  %>% 
@@ -106,10 +109,17 @@ gnomad_lof  %>%
 gnomad_lof  %>% 
   dplyr::filter(p_afr < p_filter) %>%
   ggplot(aes(x = p_afr)) + 
-  geom_histogram(bins = 100) + 
+  geom_histogram(bins = 50) + 
   theme_bw() +
   labs(title = "AFR (p_afr < 0.001)",
        x = "p (proportion of haplotypes with a pLoF variant)")
+
+gnomad_lof  %>% 
+  dplyr::filter(p_afr < p_filter) %>% 
+  dplyr::pull(p_afr) %>% 
+  unique() %>% 
+  length()
+
 
 gnomad_lof  %>% 
   dplyr::filter(p_nfe < p_filter) %>%
@@ -134,6 +144,40 @@ gnomad_lof %>%
   theme_bw() +
   labs(title = "AMR (p_amr < 0.001)",
        x = "p (proportion of haplotypes with a pLoF variant)")
+
+
+# Number of unique value for AFR and NFE filtered values 
+
+
+{
+  
+p_afr_filtered = gnomad_lof %>% 
+                 dplyr::filter(p_afr < p_filter) %>%
+                 dplyr::pull(p_afr) 
+  
+
+  message("Number of genes with p_afr < ", p_filter)
+  
+  print(length(p_nfe_filtered))
+  
+  message("Number of unique p_nfe values < ", p_filter)
+  
+  print(length(unique(p_nfe_filtered)))
+  
+  
+p_nfe_filtered = gnomad_lof %>% 
+                 dplyr::filter(p_nfe < p_filter) %>%
+                 dplyr::pull(p_nfe) 
+
+message("Number of genes with p_nfe < ", p_filter)
+
+print(length(p_nfe_filtered))
+
+message("Number of unique p_nfe values < ", p_filter)
+
+print(length(unique(p_nfe_filtered)))
+
+}
 
 # ? Perhaps look at p filtered by overall population constraint, and then look at the distribution of p for each population
 # e.g. filter(p < 0.001), then look at p_afr, p_nfe, p_fin, p_amr
