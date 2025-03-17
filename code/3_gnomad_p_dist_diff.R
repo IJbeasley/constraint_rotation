@@ -315,6 +315,14 @@ filtered_gnomad_lof %>%
 
 
 
+gnomad_lof = gnomad_lof %>% 
+  group_by(afr_nfe_p_diff,
+           amr_nfe_p_diff,
+           fin_nfe_p_diff)
+
+gnomad_lof %>% 
+  summarise(n = n())
+
 ############################### Compare genes with different p values between populations ###############################
 
 # Do they have different gene features to those that do not differ between AFR and NFE?
