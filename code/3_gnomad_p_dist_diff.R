@@ -6,6 +6,7 @@
 # genes that have different p between AFR and NFE groups
 # vs genes that do not
 
+{
 # Load the data
 # using gnomad v2.1.1
 gnomad_lof = data.table::fread("data/gnomad.v2.1.1.lof_metrics.by_gene.txt")
@@ -14,8 +15,10 @@ library(ggplot2)
 library(dplyr)
 library(plotly)
 
-####### Part i. Get a feature of testis biased expression ##########
+}
 
+####### Part i. Get a feature of testis biased expression ##########
+{
 # Load GTEx data
 # Median TPM values for each gene in each tissue
 gtex_med_tpm = data.table::fread("data/gtex/GTEx_Analysis_v10_RNASeQCv2.4.2_gene_median_tpm.gct")
@@ -30,7 +33,9 @@ pca = prcomp(
                log()
              )
 
+}
 
+{
 data.frame(pve = pca$sdev/sum(pca$sdev)) %>% 
                   ggplot(aes(x=1:length(pca$sdev), y=pve)) + 
                  geom_col() + 
@@ -56,7 +61,7 @@ pc_cor <- cor(pc_scores,
 pc_cor_df <- data.frame(PC = colnames(pc_scores), Correlation = pc_cor)
 pc_cor_df <- pc_cor_df %>% arrange(desc(abs(Correlation)))
 
-print("\n The top 5 PCs most correlated with testis expression")
+message("\n The top 5 PCs most correlated with testis expression")
 print(pc_cor_df[1:5,])
 
 # Plot PC1 vs PC6 (the top 2 PCs most correlated with testis expression)
@@ -66,12 +71,24 @@ plot = pca$rotation %>%
   dplyr::mutate(Testis = ifelse(Tissue == "Testis", 1, 0)) %>% 
   dplyr::mutate(Testis = as.factor(Testis)) %>% 
   ggplot(aes(x=PC1, y=PC6, col = Testis, Tissue = Tissue)) + 
-  geom_point() + 
-  theme_bw() 
+  geom_point(size = 3) + 
+  theme_bw() + 
+  labs(legend_title = "Testis-biased expression", title = "GTEx Median TPM per tissue") +
+  xlab("PC1 (32.98%)") + 
+  ylab("PC6 (2.86%)") + 
+  theme(axis.title = element_text(size = 20),   # X and Y axis titles
+        axis.text = element_text(size = 18),    # X and Y axis labels
+        legend.text = element_text(size = 12),  # Legend text
+        legend.title = element_text(size = 18), # Legend title
+        plot.title = element_text(size = 25, face = "bold") )
 
+print(plot)
+ggsave("presentation_figs/pca_plot_pc1_v_pc6.png", width = 15, height = 10, units = "cm")
 
 plotly::ggplotly(plot)
+}
 
+{
 # Clearly, PC6 is a good distinguishing factor for testis expression
 # It separates the testis from other tissues
 
@@ -84,15 +101,17 @@ testis_genes = pca$x %>%
   row.names()  %>%
   unique() 
 
-print("\n Number of genes that are testis genes")
-length(testis_genes) 
+message("\n Number of genes that are testis genes")
+print(length(testis_genes))
   
-print("\n Number of genes in the GTEX dataset")
-pca$x %>% 
+message("\n Number of genes in the GTEX dataset")
+print(
+  pca$x %>% 
   as.data.frame()  %>% 
   row.names() %>% 
   unique() %>% 
   length()
+)
 
 # Remove the dot and number after it - to match with the gene names in gnomad data
 testis_genes <- sub("\\.\\d+$", "", testis_genes)
@@ -101,11 +120,13 @@ testis_genes <- sub("\\.\\d+$", "", testis_genes)
 gnomad_lof = gnomad_lof %>% 
   dplyr::mutate(is_testis_gene = ifelse(gene_id %in% testis_genes, 1, 0)) 
 
-print("\n Number of testis genes in the gnomad data")  
-gnomad_lof %>% 
+message("\n Number of testis genes in the gnomad data")  
+print(
+  gnomad_lof %>% 
   group_by(is_testis_gene) %>% 
   summarise(n = n())
-
+)
+}
 
 ####################### Define what constitutes a significant difference in p (constraint metric) values ######################
 
@@ -116,76 +137,150 @@ gnomad_lof %>%
 delta = 0.1
 
 {
-# Under this definition, what differences in p (estimated as 1- sqrt(no_lofs/defined)) are significant?
-# Let's estimate it by simulating: 
-
-# simulate the proportion of haplotyes without a pLoF variant in AFR and NFE
-afr_no_lof = seq(from = 0, to = 1, by = 0.02)
-nfe_no_lof =  seq(from = 0, to = 1, by = 0.02)
-
-# assume every combination of afr_no_lof and nfe_no_lof is possible
-diff_df = expand.grid(afr_no_lof, nfe_no_lof)
-names(diff_df) = c("afr_no_lof", "nfe_no_lof")
-
-# calculate p_afr and p_nfe values
+set_pop_diff_thresh <- function(delta = 0.1){ 
+  
+  pop1_no_lof = seq(from = 0, to = 1, by = 0.01)
+  pop2_no_lof =  seq(from = 0, to = 1, by = 0.01)
+  
+  diff_df = expand.grid(pop1_no_lof, pop2_no_lof)
+  names(diff_df) = c("pop1_no_lof", "pop2_no_lof")
+  
   diff_df = diff_df %>% 
-    dplyr::mutate(p_afr = 1 - sqrt(afr_no_lof),
-                           p_nfe = 1 - sqrt(nfe_no_lof)
-                           )
-
-# calculate the difference in p_afr and p_nfe values
+    dplyr::mutate(
+      p_pop1 = 1 - sqrt(pop1_no_lof),
+      p_pop2 = 1 - sqrt(pop2_no_lof)
+    )
+  
   diff_df =  diff_df %>% 
-                  dplyr::mutate(
-                                         p_diff = p_afr - p_nfe
-                                         no_lof_diff = afr_no_lof - nfe_no_lof
-                                         )
-
-  # Filter points where |afr_no_lof  -  nfe_no_lof| > delta
+    dplyr::mutate(
+      p_diff = p_pop1 - p_pop2,
+      no_lof_diff = abs(pop1_no_lof - pop2_no_lof)
+    )
+  
   filtered_df <- diff_df %>% 
-                        dplyr::filter(no_lof_diff > delta)
-
-  # Split into two groups
-  above_df <- filtered_df %>% dplyr::filter(p_afr > p_nfe)  # Above y = x (p_afr > p_nfe)
-  below_df <- filtered_df %>% dplyr::filter(p_afr < p_nfe) # Below y = x (p_afr < p_nfe)
-
-# Calculate the curve that fits the edge of the above and below points
-above_df_line = above_df %>% 
-    dplyr::group_by(p_nfe) %>% 
-    dplyr::slice_min(p_afr)
+    dplyr::filter(no_lof_diff > delta)
+  
+  above_df <- filtered_df %>% dplyr::filter(p_pop1 > p_pop2)
+  below_df <- filtered_df %>% dplyr::filter(p_pop1 < p_pop2)
+  
+  above_df_line = above_df %>% 
+    dplyr::group_by(p_pop2) %>% 
+    dplyr::slice_min(p_pop1)
   
   below_df_line = below_df %>% 
-    dplyr::group_by(p_nfe) %>% 
-    dplyr::slice_max(p_afr)
+    dplyr::group_by(p_pop2) %>% 
+    dplyr::slice_max(p_pop1)
   
-poly2_above <- lm(p_afr ~ poly(p_nfe, 2, raw = TRUE), data= above_df_line)
-poly2_below <- lm(p_afr ~ poly(p_nfe, 2, raw = TRUE), data= below_df_line)
-
- coef_above <- coef(poly2_above)
-coef_below <- coef(poly2_below)
+  poly2_above <- lm(p_pop1 ~ poly(p_pop2, 2, raw = TRUE), data= above_df_line)
+  poly2_below <- lm(p_pop1 ~ poly(p_pop2, 2, raw = TRUE), data= below_df_line)
   
-# Print formulas
-cat("Above y=x: p_afr =", coef_above[1], "+", coef_above[2], "* p_nfe +", coef_above[3], "* p_nfe^2\n")
-cat("Below y=x: p_afr =", coef_below[1], "+", coef_below[2], "* p_nfe +", coef_below[3], "* p_nfe^2\n")
+  coef_above <- coef(poly2_above)
+  coef_below <- coef(poly2_below)
+  
+  cat("Above y=x: p_afr =", coef_above[1], "+", coef_above[2], "* p_nfe +", coef_above[3], "* p_nfe^2\n")
+  cat("Below y=x: p_afr =", coef_below[1], "+", coef_below[2], "* p_nfe +", coef_below[3], "* p_nfe^2\n")
+  
+  above_formula <<- function(x_axis_pop) {
+    return(coef_above[1] + coef_above[2] * x_axis_pop + coef_above[3] * x_axis_pop ^2)
+  }
+  
+  below_formula <<- function(x_axis_pop) {
+    return(coef_below[1] + coef_below[2] * x_axis_pop + coef_below[3] * x_axis_pop ^2)
+  }
+  
+  #assign("above_formula", above_formula, envir = .GlobalEnv)
+  assign("coef_below", coef_below, envir = .GlobalEnv)
+  assign("coef_above", coef_above, envir = .GlobalEnv)
+  
+  
+  
+}
 
-# Now get the predicted values for the above and below points
-# To plot the curve that fits the edge of the above and below points
-gnomad_lof$above_formula <- predict(poly2_above, newdata = gnomad_lof)
-gnomad_lof$below_formula <- predict(poly2_below, newdata = gnomad_lof)
+set_pop_diff_thresh()
+
+gnomad_lof = gnomad_lof %>% 
+  dplyr::mutate(above_curve = above_formula(p_nfe)) %>% 
+  dplyr::mutate(below_curve = below_formula(p_nfe))
+
+gnomad_lof = gnomad_lof %>% 
+  dplyr::mutate(afr_nfe_p_diff = as.factor(ifelse(p_afr >= above_curve | p_afr <= below_curve, 1, 0))) %>%
+  dplyr::mutate(amr_nfe_p_diff = as.factor(ifelse(p_amr >= above_curve| p_amr <= below_curve, 1, 0))) %>%
+  dplyr::mutate(fin_nfe_p_diff = as.factor(ifelse(p_fin >= above_curve | p_fin <= below_curve, 1, 0)))
 
 }
 
-# Plot the curve of different p values between AFR and NFE
-# on the gnomad data
+{
+  
+  
+  # Plot the curve of different p values between AFR and NFE
+  # on the gnomad data
+  
+  gnomad_lof %>% 
+    ggplot(aes(x = p_nfe, y = p_afr)) + #colour = afr_nfe_p_diff)) + 
+    geom_abline(slope = 1, intercept = 0, color = "firebrick")+  
+    geom_point(alpha = 0.25, size = 3) + 
+    geom_line(aes(x = p_nfe, y = above_curve), color = "blue", linewidth = 2, linetype = "dashed") +
+    geom_line(aes(x = p_nfe, y = below_curve), color = "blue", linewidth = 2, linetype = "dashed") +
+    
+    theme_bw() +
+    ylim(0,1) + 
+    xlim(0,1) + 
+    theme(axis.title = element_text(size = 20),   # X and Y axis titles
+          axis.text = element_text(size = 18),    # X and Y axis labels
+          legend.text = element_text(size = 12),  # Legend text
+          legend.title = element_text(size = 18), # Legend title
+          plot.title = element_text(size = 25, face = "bold") ) + 
+    labs(title = "AFR vs NFE (p)")  
+  
+  
+  ggsave("presentation_figs/afr_v_nfe_delta_scatter.png", 
+         width = 20, 
+         height = 20, 
+         units = "cm"
+  )  
+  
+  gnomad_lof %>% 
+    ggplot(aes(x = p_nfe, y = p_amr)) + #colour = afr_nfe_p_diff)) + 
+    geom_point(alpha = 0.25) + 
+    geom_line(aes(x = p_nfe, y = above_curve), color = "blue", linewidth = 0.5, linetype = "dashed") +
+    geom_line(aes(x = p_nfe, y = below_curve), color = "blue", linewidth = 0.5, linetype = "dashed") +
+    geom_abline(slope =1, intercept = 0, color = "firebrick")+  
+    theme_bw() +
+    ylim(0,1) + 
+    xlim(0,1) + 
+    labs(title = "AMR vs NFE (p)") 
+  
+  gnomad_lof %>% 
+    ggplot(aes(x = p_nfe, y = p_fin)) + #colour = afr_nfe_p_diff)) + 
+    geom_point(alpha = 0.25) + 
+    geom_line(aes(x = p_nfe, y = above_curve), color = "blue", linewidth = 0.5, linetype = "dashed") +
+    geom_line(aes(x = p_nfe, y = below_curve), color = "blue", linewidth = 0.5, linetype = "dashed") +
+    geom_abline(slope =1, intercept = 0, color = "firebrick")+  
+    theme_bw() +
+    ylim(0,1) + 
+    xlim(0,1) + 
+    labs(title = "FIN vs NFE (p)")  
+  
+}
+
+
+
+
+
 gnomad_lof %>% 
   ggplot(aes(x = p_nfe, y = p_afr)) + 
   geom_abline(slope =1, intercept = 0, color = "firebrick")+  
-  geom_line(data = above_df_line, aes(x = p_nfe, y = predicted), color = "blue", size = 0.5, linetype = "dashed") +
-  geom_line(data = below_df_line, aes(x = p_nfe, y = predicted), color = "blue", size = 0.5, linetype = "dashed") +
+  geom_line(data = above_df_line, aes(x = p_nfe, y = above_line), color = "blue", linewidth = 0.5, linetype = "dashed") +
+  geom_line(data = below_df_line, aes(x = p_nfe, y = below_line), color = "blue", linewidth = 0.5, linetype = "dashed") +
   geom_point(alpha = 0.25) + 
   theme_bw() +
   labs(title = "AFR vs NFE (p)")
 
   # Now filter for different p values between AFR and NFE
+gnomad_lof$above_formula <- predict(poly2_above, newdata = gnomad_lof)
+gnomad_lof$below_formula <- predict(poly2_below, newdata = gnomad_lof)
+
+
   filtered_gnomad_lof = gnomad_lof %>% 
   dplyr::filter(p_afr >= above_formula | p_afr <= below_formula)
 
@@ -199,24 +294,24 @@ filtered_gnomad_lof %>%
   labs(title = "AFR vs NFE (p)") 
 
 # same but for AMR vs NFE
-gnomad_lof %>% 
-  ggplot(aes(x = p_nfe, y = p_amr)) + 
-  geom_abline(slope =1, intercept = 0, color = "firebrick")+  
-  geom_line(data = above_df_line, aes(x = p_nfe, y = predicted), color = "blue", size = 0.5, linetype = "dashed") +
-  geom_line(data = below_df_line, aes(x = p_nfe, y = predicted), color = "blue", size = 0.5, linetype = "dashed") +
-  geom_point(alpha = 0.25) + 
-  theme_bw() +
-  labs(title = "AMR vs NFE (p)")
+# gnomad_lof %>% 
+#   ggplot(aes(x = p_nfe, y = p_amr)) + 
+#   geom_abline(slope =1, intercept = 0, color = "firebrick")+  
+#   geom_line(data = above_df_line, aes(x = p_nfe, y = predicted), color = "blue", size = 0.5, linetype = "dashed") +
+#   geom_line(data = below_df_line, aes(x = p_nfe, y = predicted), color = "blue", size = 0.5, linetype = "dashed") +
+#   geom_point(alpha = 0.25) + 
+#   theme_bw() +
+#   labs(title = "AMR vs NFE (p)")
 
 
-gnomad_lof %>% 
-  ggplot(aes(x = p_nfe, y = p_fin)) + 
-  geom_abline(slope =1, intercept = 0, color = "firebrick")+  
-  geom_line(data = above_df_line, aes(x = p_nfe, y = predicted), color = "blue", size = 0.5, linetype = "dashed") +
-  geom_line(data = below_df_line, aes(x = p_nfe, y = predicted), color = "blue", size = 0.5, linetype = "dashed") +
-  geom_point(alpha = 0.25) + 
-  theme_bw() +
-  labs(title = "FIN vs NFE (p)")
+# gnomad_lof %>% 
+#   ggplot(aes(x = p_nfe, y = p_fin)) + 
+#   geom_abline(slope =1, intercept = 0, color = "firebrick")+  
+#   geom_line(data = above_df_line, aes(x = p_nfe, y = predicted), color = "blue", size = 0.5, linetype = "dashed") +
+#   geom_line(data = below_df_line, aes(x = p_nfe, y = predicted), color = "blue", size = 0.5, linetype = "dashed") +
+#   geom_point(alpha = 0.25) + 
+#   theme_bw() +
+#   labs(title = "FIN vs NFE (p)")
 
 
 
@@ -229,13 +324,17 @@ gnomad_lof = gnomad_lof %>%
   dplyr::mutate(diff = ifelse(p_afr >= above_formula | p_afr <= below_formula, 1, 0)) %>% 
   dplyr::mutate(diff = as.factor(diff))
 
-print("\n Number of genes that differ between AFR and NFE vs those that do not")
-gnomad_lof %>% 
+{
+message("\n Number of genes that differ between AFR and NFE vs those that do not")
+print(
+  gnomad_lof %>% 
   group_by(diff) %>% 
   summarise(n = n())
+)
 
-print("\n Distribution of p_afr and p_nfe for genes that differ between AFR and NFE vs those that do not")
-gnomad_lof %>% 
+message("\n Distribution of p_afr and p_nfe for genes that differ between AFR and NFE vs those that do not")
+print(
+  gnomad_lof %>% 
   group_by(diff) %>%
   summarise(
                       avg_p_afr = mean(p_afr),
@@ -243,9 +342,10 @@ gnomad_lof %>%
                       avg_p_nfe = mean(p_nfe),
                       median_p_nfe = median(p_nfe)
                       )
-  
-print("\n Distribution of p for not included population,  for genes that differ between AFR and NFE vs those that do not") 
-gnomad_lof %>% 
+)  
+message("\n Distribution of p for not included population,  for genes that differ between AFR and NFE vs those that do not") 
+print(
+  gnomad_lof %>% 
   group_by(diff) %>%
   summarise(
                       avg_p_amr = mean(p_amr),
@@ -260,8 +360,10 @@ gnomad_lof %>%
                       median_p_eas = median(p_eas)
                       )
 
-print("\n Distrribution of p_afr and p_nfe values, for genes that differ vs those that do not")
-gnomad_lof %>% 
+)  
+message("\n Distrribution of p_afr and p_nfe values, for genes that differ vs those that do not")
+print(
+  gnomad_lof %>% 
   group_by(diff) %>% 
   summarise(
                      avg_p_afr = mean(p_afr),
@@ -270,31 +372,41 @@ gnomad_lof %>%
                      median_p_nfe = median(p_nfe)
                     )
 
-print("\n \n Distribution of features for genes that differ between AFR and NFE vs those that do not")
 
-print("\n Proportion of testis genes, for those that differ between AFR and NFE vs those that do not")
-gnomad_lof %>% 
+) 
+
+} 
+
+{
+message("\n Proportion of testis genes, for those that differ between AFR and NFE vs those that do not")
+print(
+  gnomad_lof %>% 
   group_by(diff) %>% 
   summarise(n = n(), 
                     percent_testis_gene = mean(is_testis_gene)
                    )
-
+)
 # just below 0.05 significance ... 
-pbinom(q = floor(0.394 * 94), 
+print(
+  pbinom(q = floor(0.394 * 94), 
        size = 94, 
        prob = 0.328, 
        lower.tail = F
        ) 
-
+)
+      
 print("\n Distribution of max MAF for genes that differ between AFR and NFE vs those that do not")
-gnomad_lof %>% 
+print(
+  gnomad_lof %>% 
   group_by(diff) %>% 
   summarise(avg_maf_af = mean(max_af),
                     median_maf_af = median(max_af)
   )
+)
 
-print("\n Distribution of gene length features, for genes that differ between AFR and NFE vs those that do not")
-gnomad_lof %>% 
+message("\n Distribution of gene length features, for genes that differ between AFR and NFE vs those that do not")
+print(
+  gnomad_lof %>% 
   group_by(diff) %>% 
   summarise(avg_cds_len = mean(cds_length),
             median_cds_len = median(cds_length),
@@ -303,15 +415,21 @@ gnomad_lof %>%
             avg_n_exons = mean(num_coding_exons),
             median_n_exons = median(num_coding_exons)
             )
+)
 
-print("\n Distribution of Number of LOF sites  for genes that differ between AFR and NFE vs those that do not")
-gnomad_lof %>% 
+message("\n Distribution of Number of LOF sites  for genes that differ between AFR and NFE vs those that do not")
+print(
+  gnomad_lof %>% 
   group_by(diff) %>% 
   summarise(
             avg_n_sites = mean(n_sites),
             median_n_sites = median(n_sites)
             )
+)
+  
+} 
 
+########################## subcategories ############# 
 # Next step to add to script:
 # Create further subcategories of differences 
 

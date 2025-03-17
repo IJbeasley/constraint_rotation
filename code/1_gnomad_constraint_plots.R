@@ -50,10 +50,37 @@ print(summary(gnomad_lof$p_amr))
 }
 
 
+############## p vs classic_caf scatterplot ###############
+
+{
+  
+  message("Correlation between p and classic_caf")
+  print(cor(gnomad_lof$p, gnomad_lof$classic_caf,  method = "spearman",  use =  "complete.obs"))
+
+  gnomad_lof %>% 
+    ggplot(aes(x = p, y= classic_caf)) + 
+    geom_point(alpha = 0.25, size = 3) + 
+    theme_bw() + 
+    theme(axis.title = element_text(size = 20),   # X and Y axis titles
+          axis.text = element_text(size = 18),    # X and Y axis labels
+          legend.text = element_text(size = 12),  # Legend text
+          legend.title = element_text(size = 18), # Legend title
+          plot.title = element_text(size = 25, face = "bold") )  + 
+    labs(#title = "Relationship between constraint metrics", 
+         subtitle = "classic_caf vs. p") 
+    
+
+  ggsave("presentation_figs/classic_caf_vs_p_scatter.png", 
+         width = 15, 
+         height = 15, 
+         units = "cm"
+         )
+}
+
 
 ########### Histograms of p ###########
 
-
+{
 
 gnomad_lof  %>%
   ggplot(aes(x = p)) + 
@@ -91,16 +118,60 @@ gnomad_lof   %>%
        x = "p (proportion of haplotypes with a pLoF variant)")
 
     
+}
+####### Histograms of p, for more constrained genes for different populations ########
 
-####### Histograms of p, for more constrainted genes for different populations ########
+{
+message("Number of unique p values (AFR)")  
+print(
+  gnomad_lof  %>% 
+  dplyr::pull(p_afr) %>% 
+  unique() %>% 
+  length()
+)
+
+message("\n Number of unique p values (NFE)")
+print(
+  gnomad_lof  %>% 
+    dplyr::pull(p_nfe) %>% 
+    unique() %>% 
+    length()
+)
+
+message("\n FIN")
+print(
+  gnomad_lof  %>% 
+    dplyr::pull(p_fin) %>% 
+    unique() %>% 
+    length()
+)
+
+message("\n AMR")
+print(
+  gnomad_lof  %>% 
+    dplyr::pull(p_amr) %>% 
+    unique() %>% 
+    length()
+)
+
+message("\n ALL")
+print(
+  gnomad_lof  %>% 
+    dplyr::pull(p) %>% 
+    unique() %>% 
+    length()
+)
+}
 
 # filtering at the median ... 
+
+{
 p_filter = 0.001
 
 gnomad_lof  %>% 
   dplyr::filter(p < p_filter) %>%
   ggplot(aes(x = p)) + 
-  geom_histogram(bins = 100) + 
+  geom_histogram(bins = 20) + 
   theme_bw() +
   labs(title = "All populations (p < 0.001)",
        x = "p (proportion of haplotypes with a pLoF variant)")
@@ -108,17 +179,13 @@ gnomad_lof  %>%
 
 gnomad_lof  %>% 
   dplyr::filter(p_afr < p_filter) %>%
-  ggplot(aes(x = p_afr)) + 
-  geom_histogram(bins = 50) + 
+  ggplot(aes(x = p_afr))+ 
+  geom_histogram(bins = 10) + 
   theme_bw() +
   labs(title = "AFR (p_afr < 0.001)",
        x = "p (proportion of haplotypes with a pLoF variant)")
 
-gnomad_lof  %>% 
-  dplyr::filter(p_afr < p_filter) %>% 
-  dplyr::pull(p_afr) %>% 
-  unique() %>% 
-  length()
+
 
 
 gnomad_lof  %>% 
@@ -145,6 +212,7 @@ gnomad_lof %>%
   labs(title = "AMR (p_amr < 0.001)",
        x = "p (proportion of haplotypes with a pLoF variant)")
 
+}
 
 # Number of unique value for AFR and NFE filtered values 
 
@@ -315,12 +383,132 @@ gnomad_lof %>%
 {
 
 print("Correlation between p AFR and NFE")
-cor(gnomad_lof$p_afr, gnomad_lof$p_nfe, method = "spearman",  use =  "complete.obs")
+print(cor(gnomad_lof$p_afr, gnomad_lof$p_nfe, method = "spearman",  use =  "complete.obs"))
 
 print("Correlation between p FIN and NFE")
-cor(gnomad_lof$p_fin, gnomad_lof$p_nfe, method = "spearman",  use = "complete.obs")
+print(cor(gnomad_lof$p_fin, gnomad_lof$p_nfe, method = "spearman",  use = "complete.obs"))
 
 print("Correlation between p AMR and NFE")
-cor(gnomad_lof$p_amr, gnomad_lof$p_nfe, method = "spearman",  use = "complete.obs")
+print(cor(gnomad_lof$p_amr, gnomad_lof$p_nfe, method = "spearman",  use = "complete.obs"))
 
 }
+
+filtered_gnomad = gnomad_lof %>% 
+  filter(p < 0.001)
+
+print("Correlation between p AMR and NFE")
+print(cor(filtered_gnomad$p_amr, filtered_gnomad$p_nfe, method = "spearman",  use = "complete.obs"))
+
+print("Correlation between p AFR and NFE")
+print(cor(filtered_gnomad$p_afr, filtered_gnomad$p_nfe, method = "spearman",  use = "complete.obs"))
+
+print("Correlation between p FIN and NFE")
+print(cor(filtered_gnomad$p_fin, filtered_gnomad$p_nfe, method = "spearman",  use = "complete.obs"))
+
+
+
+{
+  gnomad_lof %>% 
+    ggplot(aes(x = p_nfe, y = p_afr)) + 
+    geom_abline(slope =1, intercept = 0, color = "firebrick")+  
+    geom_point(alpha = 0.25, size = 4) + 
+    theme_bw() +
+    theme(axis.title = element_text(size = 24),   # X and Y axis titles
+          axis.text = element_text(size = 20),    # X and Y axis labels
+              legend.text = element_text(size = 12),  # Legend text
+              legend.title = element_text(size = 14), # Legend title
+              plot.title = element_text(size = 30, face = "bold")  # Main plot title)
+    ) + 
+    labs(title = "AFR vs NFE (p)")
+  
+    
+    
+    ggsave("presentation_figs/afr_v_nfe_plain_scatter.png", 
+           width = 20, 
+           height = 20, 
+           units = "cm"
+    )
+    
+    gnomad_lof %>% 
+      ggplot(aes(x = p_nfe, y = p_fin)) + 
+      geom_abline(slope =1, intercept = 0, color = "firebrick")+  
+      geom_point(alpha = 0.25, size = 4) + 
+      theme_bw() +
+      theme(axis.title = element_text(size = 24),   # X and Y axis titles
+            axis.text = element_text(size = 20),    # X and Y axis labels
+            legend.text = element_text(size = 12),  # Legend text
+            legend.title = element_text(size = 14), # Legend title
+            plot.title = element_text(size = 30, face = "bold")  # Main plot title)
+      ) + 
+      labs(title = "FIN vs NFE (p)")
+    
+    ggsave("presentation_figs/fin_v_nfe_plain_scatter.png", 
+           width = 20, 
+           height = 20, 
+           units = "cm"
+    )  
+    
+    gnomad_lof %>% 
+      ggplot(aes(x = p_nfe, y = p_amr)) + 
+      geom_abline(slope =1, intercept = 0, color = "firebrick")+  
+      geom_point(alpha = 0.25, size = 4) + 
+      theme_bw() +
+      theme(axis.title = element_text(size = 24),   # X and Y axis titles
+            axis.text = element_text(size = 20),    # X and Y axis labels
+            legend.text = element_text(size = 12),  # Legend text
+            legend.title = element_text(size = 14), # Legend title
+            plot.title = element_text(size = 30, face = "bold")  # Main plot title)
+      ) + 
+      labs(title = "AMR vs NFE (p)")
+    
+    
+    ggsave("presentation_figs/amr_v_nfe_plain_scatter.png", 
+           width = 20, 
+           height = 20, 
+           units = "cm"
+    )
+  
+}
+
+
+
+gnomad_lof %>% 
+  ggplot(aes(x = p_nfe, y = p_fin)) + 
+  geom_abline(slope =1, intercept = 0, color = "firebrick")+  
+  geom_point(alpha = 0.05, size = 4) + 
+  theme_bw() +
+  theme(axis.title = element_text(size = 24),   # X and Y axis titles
+        axis.text = element_text(size = 20),    # X and Y axis labels
+        legend.text = element_text(size = 12),  # Legend text
+        legend.title = element_text(size = 14), # Legend title
+        plot.title = element_text(size = 30, face = "bold")  # Main plot title)
+  ) + 
+  labs(title = "FIN vs NFE (p)") + 
+  xlim(0, 0.05) + 
+  ylim(0, 0.05)
+
+
+
+gnomad_lof %>% 
+  ggplot(aes(x = p_afr, y = p_fin)) + 
+  geom_abline(slope =1, intercept = 0, color = "firebrick")+  
+  geom_point(alpha = 0.05, size = 4) + 
+  theme_bw() +
+  theme(axis.title = element_text(size = 24),   # X and Y axis titles
+        axis.text = element_text(size = 20),    # X and Y axis labels
+        legend.text = element_text(size = 12),  # Legend text
+        legend.title = element_text(size = 14), # Legend title
+        plot.title = element_text(size = 30, face = "bold")  # Main plot title)
+  ) + 
+  labs(title = "AFR vs NFE (p)") + 
+  xlim(0, 0.05) + 
+  ylim(0, 0.05)
+
+##################### sampling down to one gene per unique p-value ... ############ 
+
+{
+  
+  gnomad_lof %>% group_by(as.factor(p_amr)) %>%  slice_sample(n  = 1) -> test_df
+  cor(test_df$p_amr, test_df$p_nfe, method = "spearman", use = "complete.obs")
+  
+  }
