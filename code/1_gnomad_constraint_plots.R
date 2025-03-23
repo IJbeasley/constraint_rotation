@@ -28,28 +28,6 @@ head(gnomad_lof[1:5, 1:5])
 # Defined as: 1 -sqrt(no_lofs / defined)
 
 
-######### summaries of p distributions #########
-
-{
-
-message("\n All populations p distribution")
-print(summary(gnomad_lof$p))
-
-message("\n AFR p distribution")
-print(summary(gnomad_lof$p_afr))
-
-message("\n NFE p distribution")
-print(summary(gnomad_lof$p_nfe))
-
-message("\n FIN p distribution")
-print(summary(gnomad_lof$p_fin))
-
-message("\n AMR p distribution")
-print(summary(gnomad_lof$p_amr))
-
-}
-
-
 ############## p vs classic_caf scatterplot ###############
 
 {
@@ -76,6 +54,29 @@ print(summary(gnomad_lof$p_amr))
          units = "cm"
          )
 }
+
+
+######### summaries of p distributions #########
+
+{
+  
+  message("\n All populations p distribution")
+  print(summary(gnomad_lof$p))
+  
+  message("\n AFR p distribution")
+  print(summary(gnomad_lof$p_afr))
+  
+  message("\n NFE p distribution")
+  print(summary(gnomad_lof$p_nfe))
+  
+  message("\n FIN p distribution")
+  print(summary(gnomad_lof$p_fin))
+  
+  message("\n AMR p distribution")
+  print(summary(gnomad_lof$p_amr))
+  
+}
+
 
 
 ########### Histograms of p ###########
@@ -121,52 +122,13 @@ gnomad_lof   %>%
 }
 ####### Histograms of p, for more constrained genes for different populations ########
 
-{
-message("Number of unique p values (AFR)")  
-print(
-  gnomad_lof  %>% 
-  dplyr::pull(p_afr) %>% 
-  unique() %>% 
-  length()
-)
-
-message("\n Number of unique p values (NFE)")
-print(
-  gnomad_lof  %>% 
-    dplyr::pull(p_nfe) %>% 
-    unique() %>% 
-    length()
-)
-
-message("\n FIN")
-print(
-  gnomad_lof  %>% 
-    dplyr::pull(p_fin) %>% 
-    unique() %>% 
-    length()
-)
-
-message("\n AMR")
-print(
-  gnomad_lof  %>% 
-    dplyr::pull(p_amr) %>% 
-    unique() %>% 
-    length()
-)
-
-message("\n ALL")
-print(
-  gnomad_lof  %>% 
-    dplyr::pull(p) %>% 
-    unique() %>% 
-    length()
-)
-}
 
 # filtering at the median ... 
 
 {
+print("Filtering at roughly the median for each group ")
 p_filter = 0.001
+print(p_filter)
 
 gnomad_lof  %>% 
   dplyr::filter(p < p_filter) %>%
@@ -214,8 +176,61 @@ gnomad_lof %>%
 
 }
 
-# Number of unique value for AFR and NFE filtered values 
+############ Number of unique p statistics values per group #############
 
+
+{
+  message("Number of unique p values (AFR)")  
+  print(
+    gnomad_lof  %>% 
+      dplyr::pull(p_afr) %>% 
+      unique() %>% 
+      length()
+  )
+  
+  message("\n Number of unique p values (NFE)")
+  print(
+    gnomad_lof  %>% 
+      dplyr::pull(p_nfe) %>% 
+      unique() %>% 
+      length()
+  )
+  
+  message("\n FIN")
+  print(
+    gnomad_lof  %>% 
+      dplyr::pull(p_fin) %>% 
+      unique() %>% 
+      length()
+  )
+  
+  message("\n AMR")
+  print(
+    gnomad_lof  %>% 
+      dplyr::pull(p_amr) %>% 
+      unique() %>% 
+      length()
+  )
+  
+  message("\n ALL")
+  print(
+    gnomad_lof  %>% 
+      dplyr::pull(p) %>% 
+      unique() %>% 
+      length()
+  )
+}
+
+pops = c("NFE", "AFR", "AMR", "FIN")
+
+unique_p = c(4210,1594,1404,867)
+
+sample_size = c(64603, 12487, 17720, 12562)
+
+data.frame(pops, unique_p, sample_size) %>% 
+  ggplot(aes(x = sample_size, y = unique_p)) + 
+  geom_point() + 
+  theme_bw()
 
 {
   
@@ -249,6 +264,132 @@ print(length(unique(p_nfe_filtered)))
 
 # ? Perhaps look at p filtered by overall population constraint, and then look at the distribution of p for each population
 # e.g. filter(p < 0.001), then look at p_afr, p_nfe, p_fin, p_amr
+
+################# scatter plot of p ( different population p vs p_nfe) #####################
+
+{
+  
+  print("Correlation between p AFR and NFE")
+  print(cor(gnomad_lof$p_afr, gnomad_lof$p_nfe, method = "spearman",  use =  "complete.obs"))
+  
+  print("Correlation between p FIN and NFE")
+  print(cor(gnomad_lof$p_fin, gnomad_lof$p_nfe, method = "spearman",  use = "complete.obs"))
+  
+  print("Correlation between p AMR and NFE")
+  print(cor(gnomad_lof$p_amr, gnomad_lof$p_nfe, method = "spearman",  use = "complete.obs"))
+  
+}
+
+filtered_gnomad = gnomad_lof %>% 
+  filter(p < 0.001)
+
+print("Correlation between p AMR and NFE")
+print(cor(filtered_gnomad$p_amr, filtered_gnomad$p_nfe, method = "spearman",  use = "complete.obs"))
+
+print("Correlation between p AFR and NFE")
+print(cor(filtered_gnomad$p_afr, filtered_gnomad$p_nfe, method = "spearman",  use = "complete.obs"))
+
+print("Correlation between p FIN and NFE")
+print(cor(filtered_gnomad$p_fin, filtered_gnomad$p_nfe, method = "spearman",  use = "complete.obs"))
+
+
+
+{
+  gnomad_lof %>% 
+    ggplot(aes(x = p_nfe, y = p_afr)) + 
+    geom_abline(slope =1, intercept = 0, color = "firebrick")+  
+    geom_point(alpha = 0.25, size = 4) + 
+    theme_bw() +
+    theme(axis.title = element_text(size = 24),   # X and Y axis titles
+          axis.text = element_text(size = 20),    # X and Y axis labels
+          legend.text = element_text(size = 12),  # Legend text
+          legend.title = element_text(size = 14), # Legend title
+          plot.title = element_text(size = 30, face = "bold")  # Main plot title)
+    ) + 
+    labs(title = "AFR vs NFE (p)")
+  
+  
+  
+  ggsave("presentation_figs/afr_v_nfe_plain_scatter.png", 
+         width = 20, 
+         height = 20, 
+         units = "cm"
+  )
+  
+  gnomad_lof %>% 
+    ggplot(aes(x = p_nfe, y = p_fin)) + 
+    geom_abline(slope =1, intercept = 0, color = "firebrick")+  
+    geom_point(alpha = 0.25, size = 4) + 
+    theme_bw() +
+    theme(axis.title = element_text(size = 24),   # X and Y axis titles
+          axis.text = element_text(size = 20),    # X and Y axis labels
+          legend.text = element_text(size = 12),  # Legend text
+          legend.title = element_text(size = 14), # Legend title
+          plot.title = element_text(size = 30, face = "bold")  # Main plot title)
+    ) + 
+    labs(title = "FIN vs NFE (p)")
+  
+  ggsave("presentation_figs/fin_v_nfe_plain_scatter.png", 
+         width = 20, 
+         height = 20, 
+         units = "cm"
+  )  
+  
+  gnomad_lof %>% 
+    ggplot(aes(x = p_nfe, y = p_amr)) + 
+    geom_abline(slope =1, intercept = 0, color = "firebrick")+  
+    geom_point(alpha = 0.25, size = 4) + 
+    theme_bw() +
+    theme(axis.title = element_text(size = 24),   # X and Y axis titles
+          axis.text = element_text(size = 20),    # X and Y axis labels
+          legend.text = element_text(size = 12),  # Legend text
+          legend.title = element_text(size = 14), # Legend title
+          plot.title = element_text(size = 30, face = "bold")  # Main plot title)
+    ) + 
+    labs(title = "AMR vs NFE (p)")
+  
+  
+  ggsave("presentation_figs/amr_v_nfe_plain_scatter.png", 
+         width = 20, 
+         height = 20, 
+         units = "cm"
+  )
+  
+}
+
+
+
+gnomad_lof %>% 
+  ggplot(aes(x = p_nfe, y = p_fin)) + 
+  geom_abline(slope =1, intercept = 0, color = "firebrick")+  
+  geom_point(alpha = 0.05, size = 4) + 
+  theme_bw() +
+  theme(axis.title = element_text(size = 24),   # X and Y axis titles
+        axis.text = element_text(size = 20),    # X and Y axis labels
+        legend.text = element_text(size = 12),  # Legend text
+        legend.title = element_text(size = 14), # Legend title
+        plot.title = element_text(size = 30, face = "bold")  # Main plot title)
+  ) + 
+  labs(title = "FIN vs NFE (p)") + 
+  xlim(0, 0.05) + 
+  ylim(0, 0.05)
+
+
+
+gnomad_lof %>% 
+  ggplot(aes(x = p_afr, y = p_fin)) + 
+  geom_abline(slope =1, intercept = 0, color = "firebrick")+  
+  geom_point(alpha = 0.05, size = 4) + 
+  theme_bw() +
+  theme(axis.title = element_text(size = 24),   # X and Y axis titles
+        axis.text = element_text(size = 20),    # X and Y axis labels
+        legend.text = element_text(size = 12),  # Legend text
+        legend.title = element_text(size = 14), # Legend title
+        plot.title = element_text(size = 30, face = "bold")  # Main plot title)
+  ) + 
+  labs(title = "AFR vs NFE (p)") + 
+  xlim(0, 0.05) + 
+  ylim(0, 0.05)
 
 
 ################## Plots of delta p (i.e. p_afr - p_nfe, p_fin - p_nfe, and p_amr - p_nfe) ####################
@@ -378,132 +519,7 @@ gnomad_lof %>%
   cor(gnomad_lof$classic_caf_amr,  gnomad_lof$classic_caf_nfe, method = "spearman",  use =  "complete.obs")
 }
 
-##################### scatter plot of p ( different population p vs p_nfe) #####################
-
-{
-
-print("Correlation between p AFR and NFE")
-print(cor(gnomad_lof$p_afr, gnomad_lof$p_nfe, method = "spearman",  use =  "complete.obs"))
-
-print("Correlation between p FIN and NFE")
-print(cor(gnomad_lof$p_fin, gnomad_lof$p_nfe, method = "spearman",  use = "complete.obs"))
-
-print("Correlation between p AMR and NFE")
-print(cor(gnomad_lof$p_amr, gnomad_lof$p_nfe, method = "spearman",  use = "complete.obs"))
-
-}
-
-filtered_gnomad = gnomad_lof %>% 
-  filter(p < 0.001)
-
-print("Correlation between p AMR and NFE")
-print(cor(filtered_gnomad$p_amr, filtered_gnomad$p_nfe, method = "spearman",  use = "complete.obs"))
-
-print("Correlation between p AFR and NFE")
-print(cor(filtered_gnomad$p_afr, filtered_gnomad$p_nfe, method = "spearman",  use = "complete.obs"))
-
-print("Correlation between p FIN and NFE")
-print(cor(filtered_gnomad$p_fin, filtered_gnomad$p_nfe, method = "spearman",  use = "complete.obs"))
-
-
-
-{
-  gnomad_lof %>% 
-    ggplot(aes(x = p_nfe, y = p_afr)) + 
-    geom_abline(slope =1, intercept = 0, color = "firebrick")+  
-    geom_point(alpha = 0.25, size = 4) + 
-    theme_bw() +
-    theme(axis.title = element_text(size = 24),   # X and Y axis titles
-          axis.text = element_text(size = 20),    # X and Y axis labels
-              legend.text = element_text(size = 12),  # Legend text
-              legend.title = element_text(size = 14), # Legend title
-              plot.title = element_text(size = 30, face = "bold")  # Main plot title)
-    ) + 
-    labs(title = "AFR vs NFE (p)")
-  
-    
-    
-    ggsave("presentation_figs/afr_v_nfe_plain_scatter.png", 
-           width = 20, 
-           height = 20, 
-           units = "cm"
-    )
-    
-    gnomad_lof %>% 
-      ggplot(aes(x = p_nfe, y = p_fin)) + 
-      geom_abline(slope =1, intercept = 0, color = "firebrick")+  
-      geom_point(alpha = 0.25, size = 4) + 
-      theme_bw() +
-      theme(axis.title = element_text(size = 24),   # X and Y axis titles
-            axis.text = element_text(size = 20),    # X and Y axis labels
-            legend.text = element_text(size = 12),  # Legend text
-            legend.title = element_text(size = 14), # Legend title
-            plot.title = element_text(size = 30, face = "bold")  # Main plot title)
-      ) + 
-      labs(title = "FIN vs NFE (p)")
-    
-    ggsave("presentation_figs/fin_v_nfe_plain_scatter.png", 
-           width = 20, 
-           height = 20, 
-           units = "cm"
-    )  
-    
-    gnomad_lof %>% 
-      ggplot(aes(x = p_nfe, y = p_amr)) + 
-      geom_abline(slope =1, intercept = 0, color = "firebrick")+  
-      geom_point(alpha = 0.25, size = 4) + 
-      theme_bw() +
-      theme(axis.title = element_text(size = 24),   # X and Y axis titles
-            axis.text = element_text(size = 20),    # X and Y axis labels
-            legend.text = element_text(size = 12),  # Legend text
-            legend.title = element_text(size = 14), # Legend title
-            plot.title = element_text(size = 30, face = "bold")  # Main plot title)
-      ) + 
-      labs(title = "AMR vs NFE (p)")
-    
-    
-    ggsave("presentation_figs/amr_v_nfe_plain_scatter.png", 
-           width = 20, 
-           height = 20, 
-           units = "cm"
-    )
-  
-}
-
-
-
-gnomad_lof %>% 
-  ggplot(aes(x = p_nfe, y = p_fin)) + 
-  geom_abline(slope =1, intercept = 0, color = "firebrick")+  
-  geom_point(alpha = 0.05, size = 4) + 
-  theme_bw() +
-  theme(axis.title = element_text(size = 24),   # X and Y axis titles
-        axis.text = element_text(size = 20),    # X and Y axis labels
-        legend.text = element_text(size = 12),  # Legend text
-        legend.title = element_text(size = 14), # Legend title
-        plot.title = element_text(size = 30, face = "bold")  # Main plot title)
-  ) + 
-  labs(title = "FIN vs NFE (p)") + 
-  xlim(0, 0.05) + 
-  ylim(0, 0.05)
-
-
-
-gnomad_lof %>% 
-  ggplot(aes(x = p_afr, y = p_fin)) + 
-  geom_abline(slope =1, intercept = 0, color = "firebrick")+  
-  geom_point(alpha = 0.05, size = 4) + 
-  theme_bw() +
-  theme(axis.title = element_text(size = 24),   # X and Y axis titles
-        axis.text = element_text(size = 20),    # X and Y axis labels
-        legend.text = element_text(size = 12),  # Legend text
-        legend.title = element_text(size = 14), # Legend title
-        plot.title = element_text(size = 30, face = "bold")  # Main plot title)
-  ) + 
-  labs(title = "AFR vs NFE (p)") + 
-  xlim(0, 0.05) + 
-  ylim(0, 0.05)
-
+####
 ##################### sampling down to one gene per unique p-value ... ############ 
 
 {

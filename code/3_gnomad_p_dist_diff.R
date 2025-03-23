@@ -6,8 +6,9 @@
 # genes that have different p between AFR and NFE groups
 # vs genes that do not
 
+
 {
-# Load the data
+############################ Load the data ########################
 # using gnomad v2.1.1
 gnomad_lof = data.table::fread("data/gnomad.v2.1.1.lof_metrics.by_gene.txt")
 
@@ -134,7 +135,7 @@ print(
 #  proportion of haplotypes without a pLoF variant between two populations
 # as delta
 
-delta = 0.05
+delta = 0.1
 
 {
 set_pop_diff_thresh <- function(delta){ 
@@ -207,8 +208,6 @@ gnomad_lof = gnomad_lof %>%
   dplyr::mutate(amr_nfe_p_diff = as.factor(ifelse(p_amr >= above_curve| p_amr <= below_curve, 1, 0))) %>%
   dplyr::mutate(fin_nfe_p_diff = as.factor(ifelse(p_fin >= above_curve | p_fin <= below_curve, 1, 0)))
 
-gnomad_lof = gnomad_lof %>% 
-  dplyr::filter(!is.na(p))
 
 print(
   gnomad_lof %>% 
@@ -216,31 +215,101 @@ print(
   summarise(n = n())
 )
 
-data.table::fwrite(gnomad_lof,
+gnomad_lof_no_na = gnomad_lof %>% 
+                   dplyr::filter(!is.na(p))
+
+data.table::fwrite(gnomad_lof_no_na,
                    file = "gnomad_lof_metrics_delta_p_0.1_na_rm.csv")
+}
+
+####################### Plot number of constraint differences ############
+
+{
+  # number of afr nfe differences
+  n_afr_diff = gnomad_lof %>% 
+               dplyr::filter(afr_nfe_p_diff == 1) %>% 
+               nrow()
+  
+  # number of amr nfe differences
+  n_amr_diff = gnomad_lof %>% 
+               dplyr::filter(amr_nfe_p_diff == 1) %>% 
+               nrow()
+  
+  # number of fin nfe differences
+  n_fin_diff = gnomad_lof %>% 
+              dplyr::filter(fin_nfe_p_diff == 1) %>% 
+              nrow()
+  
+  pop = c("AFR", 
+          "AMR", 
+          "FIN"
+          )
+  
+  # bar plot colours for populations
+  pop_colors <- c(
+                  "AFR" = "#941494", 
+                  "AMR" = "#ED1E24", 
+                  "FIN" = "#002060"
+                  )
+  
+  barplot_diff_df = data.frame(pop, 
+                          n_nfe_diff = c(n_afr_diff,
+                                         n_amr_diff,
+                                         n_fin_diff)
+                          )
+  
+  # change order of populations 
+  barplot_diff_df$pop <- factor(barplot_diff_df$pop, 
+                                levels = rev(unique(barplot_diff_df$pop))
+                                )
+  
+  barplot_diff_df %>% 
+  ggplot(aes(x = pop, y = n_nfe_diff, fill = pop)) + 
+  geom_col() + 
+  scale_y_continuous(position = "right") +
+  scale_fill_manual(values = pop_colors) + 
+  labs(x = "", 
+       y = "Number of genes with constraint differences \n with NFE") + 
+  theme_bw() + 
+    theme(axis.title = element_text(size = 20),   # X and Y axis titles
+          axis.text = element_text(size = 18),    # X and Y axis labels
+          legend.text = element_text(size = 20),  # Legend text
+          legend.position = "bottom",
+          legend.title = element_blank(), # Legend title
+          plot.title = element_text(size = 25, face = "bold")
+          ) 
+  
+  
+  ggsave("presentation_figs/n_constraint_differences_barplot.png", 
+         width = 13, 
+         height = 17, 
+         units = "cm"
+  ) 
+  
 }
 
 {
   
-  
-  # Plot the curve of different p values between AFR and NFE
+
+########### Plot the curve of different p statistics  between AFR and NFE #########
   # on the gnomad data
-  
+  {  
   gnomad_lof %>% 
-    ggplot(aes(x = p_nfe, y = p_afr)) + #colour = afr_nfe_p_diff)) + 
+    ggplot(aes(x = p_nfe, y = p_afr, colour = afr_nfe_p_diff)) + 
     geom_abline(slope = 1, intercept = 0, color = "firebrick")+  
     geom_point(alpha = 0.25, size = 3) + 
     geom_line(aes(x = p_nfe, y = above_curve), color = "blue", linewidth = 2, linetype = "dashed") +
     geom_line(aes(x = p_nfe, y = below_curve), color = "blue", linewidth = 2, linetype = "dashed") +
-    
+    scale_color_manual(values = c("0" = "black", "1" = "#941494")) +
     theme_bw() +
     ylim(0,1) + 
     xlim(0,1) + 
     theme(axis.title = element_text(size = 20),   # X and Y axis titles
           axis.text = element_text(size = 18),    # X and Y axis labels
-          legend.text = element_text(size = 12),  # Legend text
-          legend.title = element_text(size = 18), # Legend title
-          plot.title = element_text(size = 25, face = "bold") ) + 
+          legend.text =  element_blank(),  # Legend text
+          legend.title =  element_blank(), # Legend title
+          plot.title = element_text(size = 25, face = "bold"),
+          legend.position = "none") + 
     labs(title = "AFR vs NFE (p)")  
   
   
@@ -250,6 +319,7 @@ data.table::fwrite(gnomad_lof,
          units = "cm"
   )  
   
+  # amr vs nfe 
   gnomad_lof %>% 
     ggplot(aes(x = p_nfe, y = p_amr)) + #colour = afr_nfe_p_diff)) + 
     geom_point(alpha = 0.25) + 
@@ -261,6 +331,7 @@ data.table::fwrite(gnomad_lof,
     xlim(0,1) + 
     labs(title = "AMR vs NFE (p)") 
   
+  # fin vs nfe
   gnomad_lof %>% 
     ggplot(aes(x = p_nfe, y = p_fin)) + #colour = afr_nfe_p_diff)) + 
     geom_point(alpha = 0.25) + 
@@ -274,57 +345,28 @@ data.table::fwrite(gnomad_lof,
   
 }
 
+}
 
 
 
+##################### Overlap between constraint differences ############
 
-gnomad_lof %>% 
-  ggplot(aes(x = p_nfe, y = p_afr)) + 
-  geom_abline(slope =1, intercept = 0, color = "firebrick")+  
-  geom_line(data = above_df_line, aes(x = p_nfe, y = above_line), color = "blue", linewidth = 0.5, linetype = "dashed") +
-  geom_line(data = below_df_line, aes(x = p_nfe, y = below_line), color = "blue", linewidth = 0.5, linetype = "dashed") +
-  geom_point(alpha = 0.25) + 
-  theme_bw() +
-  labs(title = "AFR vs NFE (p)")
+{
+gnomad_lof = gnomad_lof %>% 
+  group_by(afr_nfe_p_diff)
 
-  # Now filter for different p values between AFR and NFE
-gnomad_lof$above_formula <- predict(poly2_above, newdata = gnomad_lof)
-gnomad_lof$below_formula <- predict(poly2_below, newdata = gnomad_lof)
+message("Median of gene length features, 
+        for genes with different constraint 
+        between AFR and NFE vs those that do not")
 
-
-  filtered_gnomad_lof = gnomad_lof %>% 
-  dplyr::filter(p_afr >= above_formula | p_afr <= below_formula)
-
-filtered_gnomad_lof %>% 
-  ggplot(aes(x = p_nfe, y = p_afr)) + 
-  geom_abline(slope =1, intercept = 0, color = "firebrick")+  
-  geom_line(data = above_df_line, aes(x = p_nfe, y = predicted), color = "blue", size = 0.5, linetype = "dashed") +
-  geom_line(data = below_df_line, aes(x = p_nfe, y = predicted), color = "blue", size = 0.5, linetype = "dashed") +
-  geom_point(alpha = 0.25) + 
-  theme_bw() +
-  labs(title = "AFR vs NFE (p)") 
-
-# same but for AMR vs NFE
-# gnomad_lof %>% 
-#   ggplot(aes(x = p_nfe, y = p_amr)) + 
-#   geom_abline(slope =1, intercept = 0, color = "firebrick")+  
-#   geom_line(data = above_df_line, aes(x = p_nfe, y = predicted), color = "blue", size = 0.5, linetype = "dashed") +
-#   geom_line(data = below_df_line, aes(x = p_nfe, y = predicted), color = "blue", size = 0.5, linetype = "dashed") +
-#   geom_point(alpha = 0.25) + 
-#   theme_bw() +
-#   labs(title = "AMR vs NFE (p)")
-
-
-# gnomad_lof %>% 
-#   ggplot(aes(x = p_nfe, y = p_fin)) + 
-#   geom_abline(slope =1, intercept = 0, color = "firebrick")+  
-#   geom_line(data = above_df_line, aes(x = p_nfe, y = predicted), color = "blue", size = 0.5, linetype = "dashed") +
-#   geom_line(data = below_df_line, aes(x = p_nfe, y = predicted), color = "blue", size = 0.5, linetype = "dashed") +
-#   geom_point(alpha = 0.25) + 
-#   theme_bw() +
-#   labs(title = "FIN vs NFE (p)")
-
-
+print(
+  gnomad_lof %>% 
+    summarise(median_cds_len = median(cds_length),
+              median_gene_len = median(gene_length),
+              median_n_exons = median(num_coding_exons)
+    )
+)
+}
 
 gnomad_lof = gnomad_lof %>% 
   group_by(afr_nfe_p_diff,
@@ -334,27 +376,25 @@ gnomad_lof = gnomad_lof %>%
 gnomad_lof %>% 
   summarise(n = n())
 
+
+
 ############################### Compare genes with different p values between populations ###############################
 
 # Do they have different gene features to those that do not differ between AFR and NFE?
 
-# group genes into different or not between AFR and NFE
-gnomad_lof = gnomad_lof %>% 
-  dplyr::mutate(diff = ifelse(p_afr >= above_formula | p_afr <= below_formula, 1, 0)) %>% 
-  dplyr::mutate(diff = as.factor(diff))
 
 {
 message("\n Number of genes that differ between AFR and NFE vs those that do not")
 print(
   gnomad_lof %>% 
-  group_by(diff) %>% 
+  # group_by(diff) %>% 
   summarise(n = n())
 )
 
 message("\n Distribution of p_afr and p_nfe for genes that differ between AFR and NFE vs those that do not")
 print(
   gnomad_lof %>% 
-  group_by(diff) %>%
+  # group_by(diff) %>%
   summarise(
                       avg_p_afr = mean(p_afr),
                       median_p_afr = median(p_afr),
@@ -365,7 +405,7 @@ print(
 message("\n Distribution of p for not included population,  for genes that differ between AFR and NFE vs those that do not") 
 print(
   gnomad_lof %>% 
-  group_by(diff) %>%
+  # group_by(diff) %>%
   summarise(
                       avg_p_amr = mean(p_amr),
                       median_p_amr = median(p_amr),
@@ -383,7 +423,7 @@ print(
 message("\n Distrribution of p_afr and p_nfe values, for genes that differ vs those that do not")
 print(
   gnomad_lof %>% 
-  group_by(diff) %>% 
+#  group_by(diff) %>% 
   summarise(
                      avg_p_afr = mean(p_afr),
                      median_p_afr = median(p_afr),
@@ -400,15 +440,63 @@ print(
 message("\n Proportion of testis genes, for those that differ between AFR and NFE vs those that do not")
 print(
   gnomad_lof %>% 
-  group_by(diff) %>% 
+  # group_by(diff) %>% 
   summarise(n = n(), 
                     percent_testis_gene = mean(is_testis_gene)
                    )
 )
+
+# summarise_gnomad_lof = gnomad_lof %>% 
+#   group_by(afr_nfe_p_diff,
+#               amr_nfe_p_diff,
+#               fin_nfe_p_diff,
+#              is_testis_gene
+#            ) %>% 
+#     summarise(n = n())
+# 
+# 
+# 
+# summarise_gnomad_lof = summarise_gnomad_lof %>% 
+#   dplyr::filter(!is.na(afr_nfe_p_diff)) %>% 
+#   mutate(is_testis_gene = ifelse(is_testis_gene == 1, "testis_gene", "not_testis_gene"),
+#          afr_nfe_p_diff = ifelse(afr_nfe_p_diff == 1, "afr_nfe_diff", "afr_nfe_same"),
+#          amr_nfe_p_diff = ifelse(amr_nfe_p_diff == 1, "amr_nfe_diff", "amr_nfe_same"),
+#          fin_nfe_p_diff = ifelse(fin_nfe_p_diff == 1, "fin_nfe_diff", "fin_nfe_same")
+#          ) %>% 
+#   tidyr::pivot_wider(values_from = "n",
+#                      names_from = c(afr_nfe_p_diff,
+#                                      amr_nfe_p_diff,
+#                                      fin_nfe_p_diff
+#                                      )
+#   )
+# 
+# # Convert to matrix
+# contingency_table <- as.matrix(summarise_gnomad_lof[, -1])
+
+
+diff = gnomad_lof %>% 
+  dplyr::ungroup() %>% 
+  dplyr::filter(!is.na(p)) %>% 
+  dplyr::group_by(afr_nfe_p_diff, is_testis_gene) %>% 
+  summarise(n = n())
+  
+
+contingency_table <- matrix(
+  diff$n,  # Fill values row-wise
+  nrow = 2, 
+  byrow = TRUE,
+  dimnames = list(
+    afr_nfe_p_diff = c("0", "1"),  # Row labels
+    is_testis_gene = c("0", "1")   # Column labels
+  )
+)
+
+fisher.test(contingency_table)
+
 # just below 0.05 significance ... 
 print(
-  pbinom(q = floor(0.394 * 94), 
-       size = 94, 
+  pbinom(q = floor(0.425 * 73), 
+       size = 73, 
        prob = 0.328, 
        lower.tail = F
        ) 
@@ -417,7 +505,7 @@ print(
 print("\n Distribution of max MAF for genes that differ between AFR and NFE vs those that do not")
 print(
   gnomad_lof %>% 
-  group_by(diff) %>% 
+  # group_by(diff) %>% 
   summarise(avg_maf_af = mean(max_af),
                     median_maf_af = median(max_af)
   )
@@ -426,7 +514,7 @@ print(
 message("\n Distribution of gene length features, for genes that differ between AFR and NFE vs those that do not")
 print(
   gnomad_lof %>% 
-  group_by(diff) %>% 
+#  group_by(diff) %>% 
   summarise(avg_cds_len = mean(cds_length),
             median_cds_len = median(cds_length),
             avg_gene_len = mean(gene_length),
@@ -439,7 +527,7 @@ print(
 message("\n Distribution of Number of LOF sites  for genes that differ between AFR and NFE vs those that do not")
 print(
   gnomad_lof %>% 
-  group_by(diff) %>% 
+  # group_by(diff) %>% 
   summarise(
             avg_n_sites = mean(n_sites),
             median_n_sites = median(n_sites)
@@ -448,31 +536,44 @@ print(
   
 } 
 
-########################## subcategories ############# 
+########################## Check patterns for just highly constrained genes ############# 
 # Next step to add to script:
 # Create further subcategories of differences 
 
-# 4 categories:
-# 1. p_afr > p_nfe, and p_afr and p_nfe are big
-# 2. p_afr > p_nfe, and p_afr and p_nfe are small
+# Define big threshold as close to median p 
+big = 0.2
 
-# 3. p_afr < p_nfe, and p_afr and p_nfe are big
-# 4. p_afr < p_nfe, and p_afr and p_nfe are small
+gnomad_lof = gnomad_lof %>% dplyr::ungroup()
 
-# Define big threshold as median
-big = 0.001
+gnomad_lof_filt = gnomad_lof %>% 
+                  dplyr::filter(p_afr < big)
 
-gnomad_lof  = gnomad_lof  %>% 
-                        dplyr::mutate(
-                                              unconstrained_p_afr =ifelse(p_afr >= big, 1, 0),
-                                              unconstrained_p_nfe = ifelse(p_nfe >= big, 1, 0),
-                                              
-                                              ) %>% 
-                      dplyr:: group_by(diff, unconstrained_p_afr, unconstrained_p_nfe)                        
+gnomad_lof_filt = gnomad_lof_filt %>% 
+  group_by(afr_nfe_p_diff)
+           #amr_nfe_p_diff,
+           #fin_nfe_p_diff)
 
-print("\n Number of genes in each category")
-gnomad_lof  %>% 
-# group_by(diff, unconstrained_p_afr, unconstrained_p_nfe) %>%
+# gnomad_lof  = gnomad_lof  %>% 
+#                         dplyr::mutate(
+#                                               unconstrained_p_afr =ifelse(p_afr >= big, 1, 0),
+#                                               unconstrained_p_nfe = ifelse(p_nfe >= big, 1, 0),
+#                                               
+#                                               ) %>% 
+#                       dplyr:: group_by(diff, unconstrained_p_afr, unconstrained_p_nfe)                        
+
+gnomad_lof_filt %>% 
   summarise(n = n())
+
+message("\n Distribution of gene length features, for genes that differ between AFR and NFE vs those that do not")
+print(
+  gnomad_lof_filt %>% 
+    #  group_by(diff) %>% 
+    summarise(median_gene_len = median(gene_length),
+              median_n_exons = median(num_coding_exons),
+              median_n_sites = median(n_sites, na.rm = T)
+    )
+)
+
+
 
 

@@ -38,6 +38,7 @@ summary(as.factor(gnomad_lof$brain_expression))
 
 ############# Scatter plot of p vs p_nfe #############
 
+{
 lof_plot_afr_nfe = gnomad_lof %>% 
   ggplot(aes(x=p_afr, 
              y=p_nfe,
@@ -62,7 +63,11 @@ lof_plot_afr_nfe = gnomad_lof %>%
 
 plotly::ggplotly(lof_plot_afr_nfe)
 
+}
+
 ###### scatter plot of p_fin vs p_nfe ######
+
+{
 
 lof_plot_afr_nfe= gnomad_lof %>% 
   ggplot(aes(x=p_fin, 
@@ -85,8 +90,11 @@ lof_plot_afr_nfe= gnomad_lof %>%
 
 plotly::ggplotly(lof_plot_afr_nfe)
 
+}
+
 ############ scatter plot of p_amr vs p_nfe ############
 
+{
 lof_plot_afr_nfe = gnomad_lof %>% 
   ggplot(aes(x=p_amr, 
              y=p_nfe,
@@ -107,3 +115,5 @@ lof_plot_afr_nfe = gnomad_lof %>%
   labs(title = "AMR vs NFE (p)")
 
 plotly::ggplotly(lof_plot_afr_nfe)
+
+}
