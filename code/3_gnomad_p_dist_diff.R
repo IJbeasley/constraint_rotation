@@ -134,10 +134,10 @@ print(
 #  proportion of haplotypes without a pLoF variant between two populations
 # as delta
 
-delta = 0.1
+delta = 0.05
 
 {
-set_pop_diff_thresh <- function(delta = 0.1){ 
+set_pop_diff_thresh <- function(delta){ 
   
   pop1_no_lof = seq(from = 0, to = 1, by = 0.01)
   pop2_no_lof =  seq(from = 0, to = 1, by = 0.01)
@@ -196,7 +196,7 @@ set_pop_diff_thresh <- function(delta = 0.1){
   
 }
 
-set_pop_diff_thresh()
+set_pop_diff_thresh(delta = delta)
 
 gnomad_lof = gnomad_lof %>% 
   dplyr::mutate(above_curve = above_formula(p_nfe)) %>% 
@@ -207,6 +207,17 @@ gnomad_lof = gnomad_lof %>%
   dplyr::mutate(amr_nfe_p_diff = as.factor(ifelse(p_amr >= above_curve| p_amr <= below_curve, 1, 0))) %>%
   dplyr::mutate(fin_nfe_p_diff = as.factor(ifelse(p_fin >= above_curve | p_fin <= below_curve, 1, 0)))
 
+gnomad_lof = gnomad_lof %>% 
+  dplyr::filter(!is.na(p))
+
+print(
+  gnomad_lof %>% 
+  dplyr::group_by(afr_nfe_p_diff) %>% 
+  summarise(n = n())
+)
+
+data.table::fwrite(gnomad_lof,
+                   file = "gnomad_lof_metrics_delta_p_0.1_na_rm.csv")
 }
 
 {
