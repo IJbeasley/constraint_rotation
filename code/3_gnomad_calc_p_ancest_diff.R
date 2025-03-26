@@ -1,5 +1,6 @@
 
 
+# Now let's look at the distribution of p values for the different populations
 
 {
   ############################ Load the data ########################
@@ -102,3 +103,127 @@ delta = 0.1
   
   data.table::fwrite(gnomad_lof_no_na,
                      file = "output/p_diff/gnomad_lof_metrics_delta_p_0.1_na_rm.csv")
+  
+  
+  
+  ####################### Plot number of constraint differences ############
+  
+  {
+    # number of afr nfe differences
+    n_afr_diff = gnomad_lof %>% 
+      dplyr::filter(afr_nfe_p_diff == 1) %>% 
+      nrow()
+    
+    # number of amr nfe differences
+    n_amr_diff = gnomad_lof %>% 
+      dplyr::filter(amr_nfe_p_diff == 1) %>% 
+      nrow()
+    
+    # number of fin nfe differences
+    n_fin_diff = gnomad_lof %>% 
+      dplyr::filter(fin_nfe_p_diff == 1) %>% 
+      nrow()
+    
+    pop = c("AFR", 
+            "AMR", 
+            "FIN"
+    )
+    
+    # bar plot colours for populations
+    pop_colors <- c(
+      "AFR" = "#941494", 
+      "AMR" = "#ED1E24", 
+      "FIN" = "#002060"
+    )
+    
+    barplot_diff_df = data.frame(pop, 
+                                 n_nfe_diff = c(n_afr_diff,
+                                                n_amr_diff,
+                                                n_fin_diff)
+    )
+    
+    # change order of populations 
+    barplot_diff_df$pop <- factor(barplot_diff_df$pop, 
+                                  levels = rev(unique(barplot_diff_df$pop))
+    )
+    
+    barplot_diff_df %>% 
+      ggplot(aes(x = pop, y = n_nfe_diff, fill = pop)) + 
+      geom_col() + 
+      scale_y_continuous(position = "right") +
+      scale_fill_manual(values = pop_colors) + 
+      labs(x = "", 
+           y = "Number of genes with constraint differences \n with NFE") + 
+      theme_bw() + 
+      theme(axis.title = element_text(size = 20),   # X and Y axis titles
+            axis.text = element_text(size = 18),    # X and Y axis labels
+            legend.text = element_text(size = 20),  # Legend text
+            legend.position = "bottom",
+            legend.title = element_blank(), # Legend title
+            plot.title = element_text(size = 25, face = "bold")
+      ) 
+    
+    
+    ggsave("presentation_figs/n_constraint_differences_barplot.png", 
+           width = 13, 
+           height = 17, 
+           units = "cm"
+    ) 
+    
+  }
+
+########### Plot the curve of different p statistics  between AFR and NFE #########
+  {
+
+    # on the gnomad data
+      gnomad_lof %>% 
+        ggplot(aes(x = p_nfe, y = p_afr, colour = afr_nfe_p_diff)) + 
+        geom_abline(slope = 1, intercept = 0, color = "firebrick")+  
+        geom_point(alpha = 0.25, size = 3) + 
+        geom_line(aes(x = p_nfe, y = above_curve), color = "blue", linewidth = 2, linetype = "dashed") +
+        geom_line(aes(x = p_nfe, y = below_curve), color = "blue", linewidth = 2, linetype = "dashed") +
+        scale_color_manual(values = c("0" = "black", "1" = "#941494")) +
+        theme_bw() +
+        ylim(0,1) + 
+        xlim(0,1) + 
+        theme(axis.title = element_text(size = 20),   # X and Y axis titles
+              axis.text = element_text(size = 18),    # X and Y axis labels
+              legend.text =  element_blank(),  # Legend text
+              legend.title =  element_blank(), # Legend title
+              plot.title = element_text(size = 25, face = "bold"),
+              legend.position = "none") + 
+        labs(title = "AFR vs NFE (p)")  
+      
+      
+      ggsave("presentation_figs/afr_v_nfe_delta_scatter.png", 
+             width = 20, 
+             height = 20, 
+             units = "cm"
+      )  
+      
+      # amr vs nfe 
+      gnomad_lof %>% 
+        ggplot(aes(x = p_nfe, y = p_amr)) + #colour = afr_nfe_p_diff)) + 
+        geom_point(alpha = 0.25) + 
+        geom_line(aes(x = p_nfe, y = above_curve), color = "blue", linewidth = 0.5, linetype = "dashed") +
+        geom_line(aes(x = p_nfe, y = below_curve), color = "blue", linewidth = 0.5, linetype = "dashed") +
+        geom_abline(slope =1, intercept = 0, color = "firebrick")+  
+        theme_bw() +
+        ylim(0,1) + 
+        xlim(0,1) + 
+        labs(title = "AMR vs NFE (p)") 
+      
+      # fin vs nfe
+      gnomad_lof %>% 
+        ggplot(aes(x = p_nfe, y = p_fin)) + #colour = afr_nfe_p_diff)) + 
+        geom_point(alpha = 0.25) + 
+        geom_line(aes(x = p_nfe, y = above_curve), color = "blue", linewidth = 0.5, linetype = "dashed") +
+        geom_line(aes(x = p_nfe, y = below_curve), color = "blue", linewidth = 0.5, linetype = "dashed") +
+        geom_abline(slope =1, intercept = 0, color = "firebrick")+  
+        theme_bw() +
+        ylim(0,1) + 
+        xlim(0,1) + 
+        labs(title = "FIN vs NFE (p)")  
+      
+    
+  }
